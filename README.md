@@ -64,12 +64,13 @@ python simplex.py entrada_1_success
 
 O arquivo de entrada contém os dados do problema no formato de desigualdade de limite superior (upper bound), com a restrição adicional de não negatividade nas variáveis. O problema está configurado da seguinte forma:
 
-minimizar \( c^T \cdot x \)
+minimizar $`c^T \cdot x`$
 
 sujeito a:
 
-\( A \cdot x \leq b \)
-\( x \geq 0 \)
+$`A \cdot x \leq b`$
+
+$`x \geq 0`$
 
 onde:
 
