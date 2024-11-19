@@ -62,12 +62,23 @@ python simplex.py entrada_1_success upper
 
 ## Formato do Arquivo de Entrada
 
-O arquivo de entrada contém os dados do problema no formato de desigualdade de limite superior (upper bound), com a restrição adicional de não negatividade nas variáveis. O problema está configurado da seguinte forma:
+O arquivo de entrada contém os dados do problema no formato de desigualdade de limite superior (upper bound) ou na forma padrão (equal), com a restrição adicional de não negatividade nas variáveis. O problema pode estar configurado de uma das seguintes formas:
+
+### Forma Upper Bound
 minimizar $`c^T \cdot x`$
 
 sujeito a:
 
 $`A \cdot x \leq b`$
+
+$`x \geq 0`$
+
+### Forma Padrão
+minimizar $`c^T \cdot x`$
+
+sujeito a:
+
+$`A \cdot x = b`$
 
 $`x \geq 0`$
 
