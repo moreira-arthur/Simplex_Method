@@ -4,17 +4,24 @@ from scipy.optimize import linprog
 from numpy.linalg import inv
 import logging
 import argparse
+import os
 
 def configure_logger(filename: str) -> None:
     """
     Configura o logger para usar um arquivo de log específico.
     :param filename: Nome do arquivo de log.
     """
+    # Criar diretório Logs se não existir
+    log_dir = "logs"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
     filename = filename.split('.')[0]
-    log_filename = f"{filename}_output.log"
+    log_filename = os.path.join(log_dir, f"{filename}_output.log")
     logging.basicConfig(filename=log_filename, level=logging.INFO, format='%(message)s')
 
-def read_input_from_file(filename):
+
+def read_input_from_file(filename: str) -> tuple:
     """
     Lê os dados de entrada para o algoritmo Simplex a partir de um arquivo de texto.
     :param filename: Nome do arquivo de entrada.
@@ -48,7 +55,7 @@ def standardizing(constraint_matrix, constraint_values, objective_coefficients) 
     augmented_objective_coefficients = np.hstack((objective_coefficients, np.zeros(num_constraints)))
     return augmented_constraint_matrix, constraint_values, augmented_objective_coefficients, num_constraints, num_variables
 
-def simplex_iteration(constraint_matrix, constraint_values, objective_coefficients, num_constraints: int, num_variables: int):
+def simplex_iteration(constraint_matrix, constraint_values, objective_coefficients, num_constraints: int, num_variables: int) -> tuple:
     """
     Executa iterações do algoritmo Simplex.
     :param constraint_matrix: Matriz de coeficientes das restrições.
@@ -154,15 +161,21 @@ def simplex_iteration(constraint_matrix, constraint_values, objective_coefficien
         optimal_value = np.dot(basic_costs, solution_vector)
     return optimal_value, solution_vector, reduced_costs, status, iteration_count
 
-def simplex(constraint_matrix, constraint_values, objective_coefficients):
+def simplex(constraint_matrix, constraint_values, objective_coefficients, standard_form=True) -> None:
     """
     Executa o algoritmo Simplex.
     :param constraint_matrix: Matriz de coeficientes das restrições.
     :param constraint_values: Vetor de termos independentes das restrições.
     :param objective_coefficients: Vetor de coeficientes da função objetivo.
+    :param standard_form: Booleano indicando se o problema está na forma padrão.
     """
-    augmented_constraint_matrix, augmented_constraint_values, augmented_objective_coefficients, num_constraints, num_variables = standardizing(constraint_matrix, constraint_values, objective_coefficients)
-    optimal_value, solution_vector, reduced_costs, status, iteration_count = simplex_iteration(augmented_constraint_matrix, augmented_constraint_values, augmented_objective_coefficients, num_constraints, num_variables)
+    if not standard_form:
+        constraint_matrix, constraint_values, objective_coefficients, num_constraints, num_variables = standardizing(constraint_matrix, constraint_values, objective_coefficients)
+    else:
+        num_constraints = constraint_matrix.shape[0]
+        num_variables = constraint_matrix.shape[1] - num_constraints
+
+    optimal_value, solution_vector, reduced_costs, status, iteration_count = simplex_iteration(constraint_matrix, constraint_values, objective_coefficients, num_constraints, num_variables)
     
     if status == "infeasible":
         logging.info("The problem is infeasible.")
@@ -193,39 +206,59 @@ def simplex(constraint_matrix, constraint_values, objective_coefficients):
         print(f"Number of iterations: {iteration_count}")
         print(f"Status: {status}")
 
-def linprog_run(filename: str) -> None:
+def linprog_run(filename: str, standard_form=True) -> None:
     """
     Executa o algoritmo Simplex usando a biblioteca scipy.
     :param filename: Nome do arquivo de entrada.
+    :param standard_form: Booleano indicando se o problema está na forma padrão.
     """
     objective_coefficients, constraint_matrix, constraint_values = read_input_from_file(filename)
-    augmented_constraint_matrix, augmented_constraint_values, augmented_objective_coefficients, num_constraints, num_variables = standardizing(constraint_matrix, constraint_values, objective_coefficients)
-    result = linprog(augmented_objective_coefficients, A_eq=augmented_constraint_matrix, b_eq=augmented_constraint_values, bounds=(0, None))
+    
+    if not standard_form:
+        constraint_matrix, constraint_values, objective_coefficients, num_constraints, num_variables = standardizing(constraint_matrix, constraint_values, objective_coefficients)
+    
+    result = linprog(objective_coefficients, A_eq=constraint_matrix, b_eq=constraint_values, bounds=(0, None))
+    
     logging.info("-------------------------------------------------------------")
     logging.info("Results from scipy implementation")
     logging.info(result)
 
-def run_and_log(filename: str) -> None:
+def run_and_log(filename: str, standard_form: bool = True) -> None:
     """
     Configura o logger e executa simplex_run e linprog_run com base no arquivo de entrada.
     :param filename: Nome do arquivo de entrada.
     """
     configure_logger(filename)
-    simplex_run(filename)
-    linprog_run(filename)
+    simplex_run(filename, standard_form)
+    linprog_run(filename, standard_form)
 
-def simplex_run(filename: str) -> None:
+def simplex_run(filename: str, standard_form=True) -> None:
     """
     Executa o algoritmo Simplex com base nos dados de entrada de um arquivo.
     :param filename: Nome do arquivo de entrada.
+    :param standard_form: Booleano indicando se o problema está na forma padrão.
     """
     objective_coefficients, constraint_matrix, constraint_values = read_input_from_file(filename)
-    simplex(constraint_matrix, constraint_values, objective_coefficients)
+    simplex(constraint_matrix, constraint_values, objective_coefficients, standard_form)
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Execute Simplex algorithm on input file.')
-    parser.add_argument('filename', type=str, help='Nome do arquivo de entrada (sem extensão .txt)')
+
+def main() -> None:
+    """
+    Função principal para executar o algoritmo Simplex.
+    """
+    parser = argparse.ArgumentParser(description='Executa o algoritmo Simplex.')
+    parser.add_argument('filename', type=str, help='Arquivo de entrada com os dados do problema.')
+    parser.add_argument('problem_type', type=str, choices=['upper', 'equal'], help="Tipo de problema: 'upper' para upperbound ou 'equal' para forma padrão.")
+    
     args = parser.parse_args()
     
+    if args.problem_type == 'upper':
+        standard_form = False
+    else:
+        standard_form = True
+
     input_filename = args.filename + '.txt'
-    run_and_log(input_filename)
+    run_and_log(input_filename,standard_form)
+
+if __name__ == "__main__":
+    main()
